@@ -1,6 +1,10 @@
 sudo: required
 services:
     - docker
+env:
+    global:
+        - SHA=$(git rev-parse HEAD)
+        - CLOUDSDK_CORE_DISABLE_PROMPTS=1
 before_install:
     - openssl aes-256-cbc -K $encrypted_8845e5887ae6_key -iv $encrypted_8845e5887ae6_iv -in multi-k8s-285406-ac653c1fba3c.json.enc -out multi-k8s-285406-ac653c1fba3c.json -d
     - curl https://sdk.cloud.google.com | bash > /dev/null;
@@ -9,5 +13,16 @@ before_install:
     - gcloud auth activate-service-account --key-file multi-k8s-285406-ac653c1fba3c.json
     - gcloud config set project multi-k8s-285406
     - gcloud config set compute/zone us-central1-c
-    - gcloud container clusters get-credential multi-cluster
+    - gcloud container clusters get-credentials multi-cluster
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker build -t ipsagar/react-test -f ./client/Dockerfile.dev ./client
+    
+script:
+    - docker run ipsagar/react-test npm run test -- --coverage
+
+deploy:
+    provider: script
+    script: bash ./deploy.sh
+    on:
+        branch: master
     
